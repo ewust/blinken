@@ -12,6 +12,7 @@ import re
 
 JSON_FILE = 'cache/bbbblinken.json.last'
 REDDIT_API = 'https://www.reddit.com/r/bbbblinken/top.json?sort=top&t=all&limit=100'
+URL_FILE = 'tree-urls'
 PER_PAGE=6
 
 def getJSONData():
@@ -138,7 +139,7 @@ def code(hash):
 def js_code(url):
     cache_fn = "cache/" + hashlib.sha256(url.encode()).hexdigest()
     if os.path.isfile(cache_fn):
-        f = open(cache_fn, 'r')
+        f = open(cache_fn, 'rb')
         buf = f.read()
         f.close()
         return buf        
@@ -147,7 +148,7 @@ def js_code(url):
         url = url.replace('//output.', '//')
 
     # http://jsbin.com/oWOfadIM/73/edit?html,js,output -> http://jsbin.com/oWOfadIM/73/js
-    if url.startswith('http://jsbin.com/'):
+    if url.startswith('http://jsbin.com/') or url.startswith('https://jsbin.com/'):
         url = url.replace('http://', 'https://')
         if '/show' in url or '/edit' in url or '/embed' in url:
             js_url = url[0:url.rindex('/')] + '/js'
@@ -188,7 +189,7 @@ def js_code(url):
         resp = urllib.request.urlopen(url)
         buf = resp.read()
     
-    f = open(cache_fn, 'w')
+    f = open(cache_fn, 'wb')
     f.write(buf)
     f.close()
     return buf
@@ -239,27 +240,25 @@ def index(page_s='0'):
 @route('/api/0/random')
 def getrandom():
     print('getrandom req...')
-    getGallery()
-    obj = getJSONData()
+    #getGallery()
+    #obj = getJSONData()
 
     candidates = []
-    for child in obj['data']['children']:
-        if not validShow(child):
-            continue
-        c = child['data']
-        if c['is_self']:
-            continue
-        candidates.append(c)
- 
+    with open(URL_FILE) as f:
+        for line in f.readlines():
+            line = line.split(' #')[0]
+            line = line.strip()
+            candidates.append(line)
+
     winner = random.choice(candidates)
-    url = show_url(winner['url'])
+    url = show_url(winner)
 
     response.set_header('Content-Type', 'application/javascript')
     
     output = {}
-    output['code'] = js_code(url)
+    output['code'] = js_code(url).decode('utf-8')
     output['url'] = url
-    output['title'] = winner['title']
+    #output['title'] = 'Xmas Tree'
     return json.dumps(output)
 
 run(host='localhost', port=3001)
