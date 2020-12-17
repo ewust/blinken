@@ -9,6 +9,7 @@ class Blinken {
     }
     this.title = obj.title;
     this.author = obj.author;
+    this.fade = obj.fade;
     this.simulator = new Simulator(this, document.body);
   }
 
@@ -26,7 +27,7 @@ class Simulator {
     this.blinken = blinken;
     this.published = false;
     this.token = undefined;
-    this.apiPath = 'https://blinken.org/api/0';
+    this.apiPath = 'https://blinken.ericw.us/api/0';
     this.runId = 0;
 
     this.render(target);
@@ -85,7 +86,7 @@ class Simulator {
       font-family: Helvetica, Arial, FreeSans, sans-serif;
       font-size: 15px;
     `;
-    send.innerText = 'Run on Stairs';
+    send.innerText = 'Run on Tree';
     send.disabled = true;
     target.append(view);
     this.send = send;
@@ -303,7 +304,7 @@ class Simulator {
     }, {
       code: code.toString(),
       url: document.location.toString(),
-      title: this.blinken.title, author: this.blinken.author,
+      title: this.blinken.title, author: this.blinken.author, fade: this.blinken.fade,
     });
   }
 
