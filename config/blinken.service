@@ -8,8 +8,8 @@ Type=simple
 Restart=always
 RestartSec=1
 User=www-data
-WorkingDirectory=/home/jhalderm/blinken/server
-ExecStart=/home/jhalderm/blinken/server/server.js
+WorkingDirectory=/root/blinken/server
+ExecStart=/root/blinken/server/server.js
 ProtectHome=no
 
 [Install]

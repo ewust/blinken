@@ -8,8 +8,8 @@ Type=simple
 Restart=always
 RestartSec=1
 User=www-data
-WorkingDirectory=/home/jhalderm/blinken/gallery
-ExecStart=/home/jhalderm/blinken/gallery/gallery.py
+WorkingDirectory=/root/blinken/gallery
+ExecStart=/root/blinken/gallery/gallery.py
 ProtectHome=no
 
 [Install]
