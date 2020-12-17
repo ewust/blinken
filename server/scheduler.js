@@ -9,10 +9,13 @@ const jobs = {};
 const queue = [];
 let stopTime = 0;
 
-exports.makeJob = function(code, url, title, author) {
+exports.makeJob = function(code, url, title, author, fade) {
   const token = makeToken();
+  if (typeof fade !== 'boolean') {
+    fade = false;
+  }
   jobs[token] = {code: code, url: url, title: title, author: author, limit: 120,
-    cancel: false, status: {}};
+    cancel: false, status: {}, fade: fade};
   return token;
 };
 
@@ -89,14 +92,14 @@ function runLocalShow(callback) {
     if (err) {
       throw new Error(err);
     }
-    callback({code: data, title: 'Circus'});
+    callback({code: data, title: 'Circus', fade: false});
   });
 }
 
 function getIdleCode(callback) {
   // Run a program from the gallery to get the metadata and 'run'
   // function from the Blinken object.
-  return https.get('https://blinken.org/api/0/random', function(res) {
+  return https.get('https://blinken.ericw.us/api/0/random', function(res) {
     let output = '';
     if (res.statusCode != 200) {
       console.log('Failed to get random show: HTTP ' + res.statusCode +
@@ -154,7 +157,7 @@ function getIdleCode(callback) {
           title = 'Untitled';
         }
         return callback({code: blinkenCode, url: galleryObj.url,
-          title: title, author: blinkenObj.author});
+          title: title, author: blinkenObj.author, fade: blinkenObj.fade});
       } catch (e) {
         if (e.name === 'SyntaxError') {
           console.log('Syntax error: ' + e.stack);
@@ -211,6 +214,7 @@ function scheduler() {
     }
     return runner.run({ // User program
       code: jobs[token].code,
+      fade: jobs[token].fade,
       url: jobs[token].url,
       idle: false,
       title: jobs[token].title,
@@ -232,6 +236,7 @@ function scheduler() {
   return getIdleCode( function(idleObj) {
     return runner.run({ // Idle program
       code: idleObj.code,
+      fade: idleObj.fade,
       url: idleObj.url,
       title: idleObj.title,
       author: idleObj.author,

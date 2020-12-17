@@ -48,7 +48,7 @@ app.post(prefix+'/publish', function(req, res) {
     return;
   }
   const token = scheduler.makeJob(
-      req.body.code, req.body.url, req.body.title, req.body.author);
+      req.body.code, req.body.url, req.body.title, req.body.author, req.body.fade);
   console.log('published from: ' + req.body.url);
   scheduler.queueJob(token);
   res.send(token);

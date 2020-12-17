@@ -26,13 +26,15 @@ function StrandControl(host, port) {
   this.host = host;
   this.port = port;
   this.streams = [];
-  this.update = function(lights) {
+  this.lights;
+  this.update = function(lights, fade_f) {
+    lights = this.mix(lights, fade_f);
     payload = [];
     ws2812payload = [];
     const scale = getBrightnessScale(lights);
     for (let i=0; i < lights.length; i++) {
       payload = payload.concat(lights[lights.length-1-i].strandBytes(scale));
-      ws2812payload = payload.concat(lights[lights.length-1-i].strandBytesWs2812(scale));
+      ws2812payload = ws2812payload.concat(lights[lights.length-1-i].strandBytesWs2812(scale));
     }
     const packet = Buffer.from(payload);
     this.sock.send(packet, 0, packet.length, this.port, this.host,
@@ -41,7 +43,7 @@ function StrandControl(host, port) {
             console.log('Network error: ' + err);
           }
         });
-    const ws2812packet = Buffer.from(payload);
+    const ws2812packet = Buffer.from(ws2812payload);
     for (let i=0; i<this.streams.length; i++) {
       try {
         this.streams[i].send(ws2812packet);
@@ -52,6 +54,23 @@ function StrandControl(host, port) {
       }
     }
   };
+  this.mix = function(lights, fade_f) {
+    if (fade_f == 1 || typeof this.lights == 'undefined') {
+        this.lights = lights;
+        return lights;
+    }
+
+    f = _limit(fade_f);
+    var out = Array(this.lights.length);
+    for (i=0; i<this.lights.length; i++) {
+        a = this.lights[i];
+        b = lights[i];
+        out[i] = new Bulb(_limit((a.r*(1-f) + b.r*f)),
+                          _limit((a.g*(1-f) + b.g*f)),
+                          _limit((a.b*(1-f) + b.b*f)));
+    }
+    return out;
+  }
 }
 
 // use stored IP address from strandIpFile
@@ -70,30 +89,28 @@ exports.setStrandHost = function(host) {
   fs.writeFileSync(strandIpFile, host);
 };
 
+function _limit(x) {
+    return Math.min(1, Math.max(0, x));
+}
+
 // Pi strand is 8-bit alpha, 12-bit rgb (4 bit each color)
 Bulb.prototype.strandBytes = function(scale) {
-  function limit(x) {
-    return Math.min(1, Math.max(0, x));
-  }
   // TODO: We should correct for gamma here, but it interacts
   //       with voltage scaling.
-  return [Math.round(scale*limit(this.a)*255),
-    Math.round(limit(this.r)*15),
-    Math.round(limit(this.g)*15),
-    Math.round(limit(this.b)*15)];
+  return [Math.round(scale*_limit(this.a)*255),
+    Math.round(_limit(this.r)*15),
+    Math.round(_limit(this.g)*15),
+    Math.round(_limit(this.b)*15)];
 };
 
 // WS2812 has 24-bit rgb (8 bit each color), no alpha
 Bulb.prototype.strandBytesWs2812 = function(scale) {
-    function limit(x) {
-        return Math.min(1, Math.max(0,x));
-    }
     //scale = scale*limit(this.a);
-    scale = limit(this.a);
+    scale = _limit(this.a);
     return [0,   // Could delete, but sending 32-bits is nice for clients
-        Math.round(limit(this.r*scale)*255),
-        Math.round(limit(this.g*scale)*255),
-        Math.round(limit(this.b*scale)*255)];
+	    Math.round(_limit(this.r*scale)*255),
+        Math.round(_limit(this.g*scale)*255),
+        Math.round(_limit(this.b*scale)*255)];
 };
 
 let currentParams = {};
@@ -158,6 +175,8 @@ exports.run = function(params) {
     return params.after(-1, 'Error during compilation: ' + e.message);
   }
 
+
+  let fade_f = 1;
   function updateLights() {
     for (let i = 0; i < lights.length; i++) {
       if (typeof lights[i] !== 'object' ||
@@ -165,9 +184,14 @@ exports.run = function(params) {
         lights[i] = new Bulb();
       }
     }
-    strand.update(lights);
+    if (params.fade) {
+        let now = Date.now()/1000;
+        fade_f = _limit((now - params.start) / 2);  // Fade over 2 seconds
+    }
+    strand.update(lights, fade_f);
   }
   updateLights();
+
 
   try {
     vm.runInContext('var ___step=___main(___lights);', sandbox, options);
